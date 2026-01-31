@@ -70,6 +70,16 @@ async def serve_frontend():
         )
 
 
+@app.get("/favicon.png")
+async def serve_favicon():
+    """Serve the favicon."""
+    from fastapi.responses import FileResponse
+    favicon_path = Path(__file__).parent / "favicon.png"
+    if favicon_path.exists():
+        return FileResponse(favicon_path, media_type="image/png")
+    return HTMLResponse(status_code=404)
+
+
 @app.get("/api/models")
 async def get_models():
     """Get list of available AI models."""
