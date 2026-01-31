@@ -1086,9 +1086,8 @@
             const items = [...memory.entries].reverse();
             memoryPanel.innerHTML = items.map((entry, idx) => `
                 <div class="memory-item">
-                    <div class="turn">Turn ${entry.turn || (memory.entries.length - idx)}</div>
-                    <div class="q">${escapeHtml(entry.q)}</div>
-                    <div class="a">${escapeHtml(entry.a)}</div>
+                    <div class="q"><strong>User:</strong> ${escapeHtml(entry.q)}</div>
+                    <div class="a"><strong>Assistant:</strong> ${escapeHtml(entry.a)}</div>
                 </div>
             `).join('');
         }

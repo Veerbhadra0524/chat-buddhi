@@ -64,8 +64,8 @@ FALLBACK_ORDER = ["groq", "hf-mistral", "hf-zephyr", "hf-phi"]
 @dataclass
 class Memory:
     """
-    Stores conversation history as structured entries.
-    Uses AI to extract meaningful keywords from each exchange.
+    Stores conversation history as full messages for proper context recall.
+    Preserves actual user messages and AI response summaries.
     """
     entries: list = field(default_factory=list)
     max_entries: int = 8  # Keep more history for better context
@@ -89,21 +89,22 @@ class Memory:
     def add_exchange(self, user_message: str, ai_response: str, keywords: dict = None):
         """
         Add a conversation exchange to memory.
-        Keywords should be extracted by AI before calling this.
+        Stores the full user message and a meaningful summary of the AI response.
         """
-        if keywords:
-            # Use AI-extracted keywords
-            q_keywords = keywords.get("question", user_message[:50])
-            a_keywords = keywords.get("answer", ai_response[:100])
-        else:
-            # Fallback: simple extraction
-            q_keywords = user_message.strip()[:50]
-            sentences = ai_response.replace('\n', ' ').split('.')
-            a_keywords = '. '.join(sentences[:2]).strip()[:100]
+        # Store the FULL user message for context
+        q_content = user_message.strip()
+        
+        # Store first 2-3 sentences or 250 chars of AI response for meaningful context
+        sentences = ai_response.replace('\n', ' ').split('.')
+        a_content = '. '.join(s.strip() for s in sentences[:3] if s.strip()).strip()
+        if len(a_content) > 250:
+            a_content = a_content[:250].rsplit(' ', 1)[0] + '...'
+        elif a_content and not a_content.endswith('.'):
+            a_content += '.'
         
         entry = {
-            "q": q_keywords,
-            "a": a_keywords,
+            "q": q_content,
+            "a": a_content,
             "turn": len(self.entries) + 1
         }
         
@@ -116,20 +117,19 @@ class Memory:
     def get_context_prompt(self) -> str:
         """
         Format memory as context for the AI model.
-        This helps the model understand the conversation history.
+        Uses clear User/Assistant format for better conversation recall.
         """
         if not self.entries:
             return ""
         
-        context_lines = ["CONVERSATION HISTORY (you must remember this):"]
+        context_lines = ["Previous conversation:"]
         
-        for i, entry in enumerate(self.entries, 1):
-            context_lines.append(f"Turn {i}:")
-            context_lines.append(f"  Topic: {entry['q']}")
-            context_lines.append(f"  Key points: {entry['a']}")
+        for entry in self.entries:
+            context_lines.append(f"User: {entry['q']}")
+            context_lines.append(f"Assistant: {entry['a']}")
+            context_lines.append("")
         
-        context_lines.append("")
-        context_lines.append("Based on the above conversation history, answer the following:")
+        context_lines.append("Continue the conversation. Answer the user's next message:")
         
         return "\n".join(context_lines)
 
